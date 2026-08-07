@@ -3,10 +3,49 @@ import { whatsappLink } from "../lib/utils";
 
 const PHONE = "919876543210";
 
-const DESKTOP_FRAMES = 192;
-const MOBILE_FRAMES = 192;
+const TOTAL_FRAMES = 192;
 const frameSrc = (dir: "desktop" | "mobile", n: number) =>
   `/frames/${dir}/frame-${String(n).padStart(3, "0")}.jpg`;
+
+// Which frame set this device actually needs — never download the other one.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return isMobile;
+}
+
+// Preload only the active set; track which frames are actually decoded and ready.
+function usePreloadedFrames(dir: "desktop" | "mobile", total: number) {
+  const loadedRef = useRef<boolean[]>(new Array(total + 1).fill(false));
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    loadedRef.current = new Array(total + 1).fill(false);
+    setReady(false);
+    let done = 0;
+    const imgs: HTMLImageElement[] = [];
+    for (let i = 1; i <= total; i++) {
+      const img = new Image();
+      img.onload = () => {
+        loadedRef.current[i] = true;
+        done++;
+        // Enable smooth scrub once the opening stretch is buffered.
+        if (done >= Math.min(total, 24) && !ready) setReady(true);
+      };
+      img.src = frameSrc(dir, i);
+      imgs.push(img);
+    }
+    return () => imgs.forEach((im) => (im.onload = null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dir, total]);
+  return { loadedRef, ready };
+}
 
 function useFrameScrub(trackRef: React.RefObject<HTMLDivElement | null>, totalFrames: number) {
   const [frame, setFrame] = useState(1);
@@ -35,22 +74,25 @@ function useFrameScrub(trackRef: React.RefObject<HTMLDivElement | null>, totalFr
   return { frame, progress };
 }
 
-// Preload every frame up front so scrubbing never pops/flickers
-function usePreload(dir: "desktop" | "mobile", total: number) {
-  useEffect(() => {
-    for (let i = 1; i <= total; i++) {
-      const img = new Image();
-      img.src = frameSrc(dir, i);
-    }
-  }, [dir, total]);
+// Given the target frame, return the nearest frame at or below it that is actually
+// decoded — so the <img> never points at an un-downloaded frame (no blank flash / stutter).
+function nearestLoaded(target: number, loaded: boolean[]) {
+  for (let i = target; i >= 1; i--) if (loaded[i]) return i;
+  for (let i = target + 1; i < loaded.length; i++) if (loaded[i]) return i;
+  return 1;
 }
 
 export default function ParallaxHero() {
   const trackRef = useRef<HTMLDivElement>(null);
-  const { frame: desktopFrame, progress } = useFrameScrub(trackRef, DESKTOP_FRAMES);
-  const { frame: mobileFrame } = useFrameScrub(trackRef, MOBILE_FRAMES);
-  usePreload("desktop", DESKTOP_FRAMES);
-  usePreload("mobile", MOBILE_FRAMES);
+  const isMobile = useIsMobile();
+  const dir: "desktop" | "mobile" = isMobile ? "mobile" : "desktop";
+  const { frame, progress } = useFrameScrub(trackRef, TOTAL_FRAMES);
+  const { loadedRef } = usePreloadedFrames(dir, TOTAL_FRAMES);
+
+  // Only ever display a frame that has finished decoding.
+  const shownFrame = nearestLoaded(frame, loadedRef.current);
+  const desktopFrame = shownFrame;
+  const mobileFrame = shownFrame;
 
   return (
     // Tall scroll track: its extra height is the scroll distance the frame sequence plays over
