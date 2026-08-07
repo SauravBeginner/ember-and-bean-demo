@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --bg: 38 40% 94%;
+  --fg: 20 35% 12%;
+  --card: 40 45% 98%;
+  --border: 32 25% 82%;
+}
+.dark {
+  --bg: 20 25% 8%;
+  --fg: 38 40% 94%;
+  --card: 20 22% 12%;
+  --border: 25 20% 22%;
+}
+
+body {
+  background-color: hsl(var(--bg));
+  color: hsl(var(--fg));
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Warm layered canvas — soft light streaks + glow, like paper in golden hour (pure CSS, no images) */
+.bg-surface {
+  background-color: hsl(var(--bg));
+  background-image:
+    radial-gradient(ellipse 900px 600px at 85% -10%, hsl(36 60% 90% / 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at -10% 40%, hsl(30 50% 88% / 0.35) 0%, transparent 65%),
+    linear-gradient(115deg, transparent 40%, hsl(38 55% 92% / 0.3) 48%, transparent 56%),
+    linear-gradient(115deg, transparent 62%, hsl(38 55% 92% / 0.2) 68%, transparent 74%);
+}
+.dark .bg-surface {
+  background-image:
+    radial-gradient(ellipse 900px 600px at 85% -10%, hsl(28 45% 16% / 0.6) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at -10% 40%, hsl(25 40% 13% / 0.5) 0%, transparent 65%),
+    linear-gradient(115deg, transparent 40%, hsl(30 40% 14% / 0.45) 48%, transparent 56%);
+}
+.bg-card-tex {
+  background-color: hsl(var(--card));
+  background-image:
+    radial-gradient(ellipse 800px 500px at 90% 0%, hsl(36 55% 91% / 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 5% 100%, hsl(30 45% 89% / 0.35) 0%, transparent 65%);
+}
+.dark .bg-card-tex {
+  background-image:
+    radial-gradient(ellipse 800px 500px at 90% 0%, hsl(28 40% 15% / 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 5% 100%, hsl(25 35% 12% / 0.45) 0%, transparent 65%);
+}
+
+.bg-surface { background-color: hsl(var(--bg)); }
+.bg-card { background-color: hsl(var(--card)); }
+.border-theme { border-color: hsl(var(--border)); }
+.text-fg { color: hsl(var(--fg)); }
