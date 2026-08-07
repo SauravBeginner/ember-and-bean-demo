@@ -1,18 +1,11 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Link, useParams } from "react-router-dom";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import ParallaxHero from "./components/ParallaxHero";
 import { whatsappLink } from "./lib/utils";
+import { MENU, getMenuItem } from "./data/menu";
 
 const PHONE = "919876543210";
-
-const MENU = [
-  { name: "Signature Pour-Over", price: 220, desc: "Single-origin, brewed to order — caramel and stone fruit on the nose.", tag: "Bestseller" },
-  { name: "Salted Caramel Latte", price: 260, desc: "Double espresso, steamed milk, house caramel, flake of sea salt.", tag: "Signature" },
-  { name: "Cold Brew Concentrate", price: 240, desc: "18-hour steep, served over ice with a splash of oat milk.", tag: "New" },
-  { name: "Classic Cappuccino", price: 200, desc: "Equal parts espresso, steamed milk, and velvet microfoam.", tag: "" },
-  { name: "Affogato", price: 280, desc: "Double shot poured tableside over vanilla bean gelato.", tag: "Dessert" },
-  { name: "Masala Chai (House)", price: 180, desc: "Slow-simmered with fresh ginger, green cardamom, black pepper.", tag: "" },
-];
 
 const STEPS = [
   { n: "01", t: "Sourced", d: "Green beans from 12+ single-origin farms, graded and cupped before we buy." },
@@ -27,37 +20,36 @@ const REVIEWS = [
   { q: "That salted caramel latte is genuinely the best coffee I've had in this city. Not close.", who: "Priya D.", note: "Weekend visitor" },
 ];
 
-function Header() {
+// `solid` forces the opaque theme-aware bar (used on inner pages that have no dark hero behind it).
+function Header({ solid = false }: { solid?: boolean }) {
   const { theme, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    if (solid) return;
     const onScroll = () => setScrolled(window.scrollY > 80);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [solid]);
 
-  // Over the hero the background is always a dark photo, so nav stays light regardless of theme.
-  // Once scrolled onto a normal section, switch to a solid, theme-aware bar.
-  const barClass = scrolled
+  const opaque = solid || scrolled;
+  const barClass = opaque
     ? "bg-[hsl(var(--bg)/90%)] backdrop-blur-md border-b border-theme"
     : "bg-transparent border-b border-transparent";
-  const textClass = scrolled ? "text-fg" : "text-cream";
-  const linkClass = scrolled ? "hover:text-caramel transition" : "hover:text-caramel-light transition";
-  const iconBtnClass = scrolled
-    ? "border-theme hover:border-caramel"
-    : "border-cream/40 hover:border-cream";
+  const textClass = opaque ? "text-fg" : "text-cream";
+  const linkClass = opaque ? "hover:text-caramel transition" : "hover:text-caramel-light transition";
+  const iconBtnClass = opaque ? "border-theme hover:border-caramel" : "border-cream/40 hover:border-cream";
 
   return (
     <header className={`fixed top-0 inset-x-0 z-50 transition-colors duration-300 ${barClass} ${textClass}`}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <span className="font-serif text-xl font-semibold">☕ Ember &amp; Bean</span>
+        <Link to="/" className="font-serif text-xl font-semibold">☕ Ember &amp; Bean</Link>
         <nav className="hidden md:flex gap-8 text-sm font-medium">
-          <a href="#menu" className={linkClass}>Menu</a>
-          <a href="#craft" className={linkClass}>The Craft</a>
-          <a href="#about" className={linkClass}>Our Story</a>
-          <a href="#visit" className={linkClass}>Visit</a>
+          <a href="/#menu" className={linkClass}>Menu</a>
+          <a href="/#craft" className={linkClass}>The Craft</a>
+          <a href="/#about" className={linkClass}>Our Story</a>
+          <a href="/#visit" className={linkClass}>Visit</a>
         </nav>
         <div className="flex items-center gap-3">
           <button onClick={toggle} aria-label="Toggle theme" className={`w-9 h-9 rounded-full border flex items-center justify-center transition ${iconBtnClass}`}>
@@ -111,23 +103,37 @@ function Menu() {
             Full menu on WhatsApp →
           </a>
         </div>
-        <div className="grid md:grid-cols-2 gap-x-14 gap-y-2">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {MENU.map((item) => (
-            <div key={item.name} className="group py-5 border-b border-theme">
-              <div className="flex items-baseline justify-between gap-4">
-                <h3 className="font-serif text-xl font-semibold group-hover:text-caramel transition">
-                  {item.name}
-                  {item.tag && (
-                    <span className="ml-3 align-middle text-[10px] uppercase font-sans font-bold tracking-widest text-caramel border border-caramel/40 rounded-full px-2.5 py-0.5">
-                      {item.tag}
-                    </span>
-                  )}
-                </h3>
-                <div className="flex-1 border-b border-dotted border-theme translate-y-[-4px]" />
-                <span className="font-serif text-xl font-semibold text-caramel whitespace-nowrap">₹{item.price}</span>
+            <Link
+              key={item.slug}
+              to={`/menu/${item.slug}`}
+              className="group bg-card border border-theme rounded-2xl overflow-hidden hover:shadow-warm hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  loading="lazy"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                {item.tag && (
+                  <span className="absolute top-3 left-3 text-[10px] uppercase font-bold tracking-widest text-espresso-dark bg-caramel rounded-full px-3 py-1">
+                    {item.tag}
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-fg/60 mt-1.5 max-w-md">{item.desc}</p>
-            </div>
+              <div className="p-5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="font-serif text-lg font-semibold group-hover:text-caramel transition">{item.name}</h3>
+                  <span className="font-serif text-lg font-semibold text-caramel whitespace-nowrap">₹{item.price}</span>
+                </div>
+                <p className="text-sm text-fg/60 mt-1.5">{item.blurb}</p>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-caramel mt-3 group-hover:gap-2 transition-all">
+                  View details →
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
       </div>
@@ -286,20 +292,139 @@ function Footer() {
   );
 }
 
+function HomePage() {
+  return (
+    <>
+      <Header />
+      <Hero />
+      <Ticker />
+      <Menu />
+      <Craft />
+      <About />
+      <Reviews />
+      <Visit />
+      <Footer />
+    </>
+  );
+}
+
+// ── Product / menu-item detail page ───────────────────────────────
+function MenuItemPage() {
+  const { slug } = useParams();
+  const item = getMenuItem(slug);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
+  if (!item) {
+    return (
+      <>
+        <Header solid />
+        <div className="pt-40 pb-32 px-6 text-center min-h-screen">
+          <p className="font-serif text-3xl font-semibold mb-4">Item not found</p>
+          <Link to="/#menu" className="text-caramel font-semibold">← Back to the menu</Link>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  const others = MENU.filter((m) => m.slug !== item.slug).slice(0, 3);
+
+  return (
+    <>
+      <Header solid />
+      <main className="pt-16">
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <Link to="/#menu" className="inline-flex items-center gap-1 text-sm font-semibold text-caramel hover:gap-2 transition-all mb-8">
+            ← Back to menu
+          </Link>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            {/* Image */}
+            <div className="rounded-3xl overflow-hidden shadow-warm border border-theme">
+              <img src={item.image} alt={item.name} className="w-full aspect-[4/3] object-cover" />
+            </div>
+
+            {/* Info */}
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="uppercase tracking-[0.25em] text-xs font-bold text-caramel">{item.category}</span>
+                {item.tag && (
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-espresso-dark bg-caramel rounded-full px-3 py-1">
+                    {item.tag}
+                  </span>
+                )}
+              </div>
+              <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-4">{item.name}</h1>
+              <p className="text-lg text-fg/70 leading-relaxed mb-6">{item.description}</p>
+
+              <ul className="space-y-2 mb-8">
+                {item.notes.map((n) => (
+                  <li key={n} className="flex items-start gap-3 text-sm text-fg/75">
+                    <span className="text-caramel mt-0.5">☕</span>
+                    {n}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex items-center gap-5 mb-8">
+                <span className="font-serif text-4xl font-semibold text-caramel">₹{item.price}</span>
+                <span className="text-sm text-fg/50">per serving</span>
+              </div>
+
+              <a
+                href={whatsappLink(PHONE, `Hi! I'd like to order a ${item.name} (₹${item.price}) from Ember & Bean.`)}
+                className="inline-flex items-center gap-2 bg-caramel text-espresso-dark font-semibold px-8 py-4 rounded-full hover:bg-caramel-light transition text-lg shadow-warm"
+              >
+                💬 Order this on WhatsApp
+              </a>
+              <p className="text-xs text-fg/45 mt-4">Order ahead — it's on the bar the moment you arrive.</p>
+            </div>
+          </div>
+
+          {/* Related */}
+          <div className="mt-24">
+            <h2 className="font-serif text-2xl font-semibold mb-8">
+              You might also <span className="text-caramel italic">like</span>
+            </h2>
+            <div className="grid sm:grid-cols-3 gap-6">
+              {others.map((o) => (
+                <Link
+                  key={o.slug}
+                  to={`/menu/${o.slug}`}
+                  className="group bg-card border border-theme rounded-2xl overflow-hidden hover:shadow-warm hover:-translate-y-1 transition-all"
+                >
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img src={o.image} alt={o.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="p-4 flex items-baseline justify-between gap-3">
+                    <h3 className="font-serif font-semibold group-hover:text-caramel transition">{o.name}</h3>
+                    <span className="font-serif font-semibold text-caramel">₹{o.price}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-surface text-fg font-sans">
-        <Header />
-        <Hero />
-        <Ticker />
-        <Menu />
-        <Craft />
-        <About />
-        <Reviews />
-        <Visit />
-        <Footer />
-      </div>
+      <BrowserRouter>
+        <div className="min-h-screen bg-surface text-fg font-sans">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/menu/:slug" element={<MenuItemPage />} />
+          </Routes>
+        </div>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }
