@@ -83,25 +83,13 @@ export default function ParallaxHero() {
   const { frame, progress } = useFrameScrub(trackRef, TOTAL_FRAMES);
   const { maxContiguous, fullyLoaded } = usePreloadedFrames(dir, TOTAL_FRAMES);
 
-  // Lock the page at the top until the whole sequence is cached, so the very first
-  // scroll-scrub plays perfectly smooth (every frame already decoded). A brief coffee
-  // loader covers the wait; scroll is released the instant buffering completes.
-  useEffect(() => {
-    if (fullyLoaded) return;
-    const html = document.documentElement;
-    const prev = html.style.overflow;
-    html.style.overflow = "hidden";
-    window.scrollTo(0, 0);
-    return () => {
-      html.style.overflow = prev;
-    };
-  }, [fullyLoaded]);
-
+  // Cap the shown frame at the highest frame that (with all before it) has finished
+  // downloading. Frames arrive in order, so this plays smoothly up to what's ready and
+  // never jumps ahead into an un-downloaded gap — no stutter, ever, even on first load.
   const ceiling = Math.max(1, maxContiguous);
   const shownFrame = Math.min(frame, ceiling);
   const desktopFrame = shownFrame;
   const mobileFrame = shownFrame;
-  const loadPct = Math.round((maxContiguous / TOTAL_FRAMES) * 100);
 
   return (
     // Tall scroll track: its extra height is the scroll distance the frame sequence plays over
@@ -179,27 +167,19 @@ export default function ParallaxHero() {
           </div>
         </div>
 
-        {/* Scroll cue once buffered */}
-        {fullyLoaded && progress < 0.96 && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-cream/70 text-xs tracking-[0.3em] uppercase animate-bounce z-20">
-            Scroll ↓
+        {/* Subtle buffering hint until the whole sequence is cached, then the scroll cue. */}
+        {!fullyLoaded ? (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-cream/60 text-xs tracking-[0.25em] uppercase z-20">
+            <span className="w-2 h-2 rounded-full bg-caramel animate-pulse" />
+            Loading
           </div>
+        ) : (
+          progress < 0.96 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-cream/70 text-xs tracking-[0.3em] uppercase animate-bounce z-20">
+              Scroll ↓
+            </div>
+          )
         )}
-
-        {/* Full-screen loading gate — holds the page until every frame is cached, so the
-            first scroll-scrub is perfectly smooth. Fades out the moment buffering completes. */}
-        <div
-          className={`absolute inset-0 z-30 flex flex-col items-center justify-center bg-espresso-dark transition-opacity duration-500 ${
-            fullyLoaded ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-        >
-          <div className="text-5xl mb-6 animate-pulse">☕</div>
-          <p className="font-serif text-2xl text-cream mb-6">Ember &amp; Bean</p>
-          <div className="w-48 h-1 rounded-full bg-cream/15 overflow-hidden">
-            <div className="h-full bg-caramel transition-[width] duration-200" style={{ width: `${loadPct}%` }} />
-          </div>
-          <p className="text-cream/50 text-xs tracking-[0.3em] uppercase mt-4">Brewing · {loadPct}%</p>
-        </div>
       </div>
     </div>
   );
