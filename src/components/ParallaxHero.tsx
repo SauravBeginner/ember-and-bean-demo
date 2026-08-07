@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { whatsappLink } from "../lib/utils";
 
-const PHONE = "919876543210";
+const PHONE = "919477514985";
 
 const TOTAL_FRAMES = 96;
 const frameSrc = (dir: "desktop" | "mobile", n: number) =>

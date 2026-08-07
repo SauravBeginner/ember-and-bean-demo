@@ -5,7 +5,7 @@ import ParallaxHero from "./components/ParallaxHero";
 import { whatsappLink } from "./lib/utils";
 import { MENU, getMenuItem } from "./data/menu";
 
-const PHONE = "919876543210";
+const PHONE = "919477514985";
 
 const STEPS = [
   { n: "01", t: "Sourced", d: "Green beans from 12+ single-origin farms, graded and cupped before we buy." },
