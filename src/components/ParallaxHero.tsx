@@ -55,7 +55,7 @@ export default function ParallaxHero() {
   return (
     // Tall scroll track: its extra height is the scroll distance the frame sequence plays over
     <div ref={trackRef} className="relative" style={{ height: "260vh" }}>
-      <div className="sticky top-0 h-screen overflow-hidden">
+      <div className="sticky top-0 h-screen overflow-hidden bg-espresso-dark">
         {/* ===== Desktop: ONE continuous full-bleed image, cup biased right, text overlaid on the left ===== */}
         <div className="hidden md:block absolute inset-0">
           <img
