@@ -21,30 +21,32 @@ function useIsMobile() {
   return isMobile;
 }
 
-// Preload only the active set; track which frames are actually decoded and ready.
+// Preload the active set and expose how many frames are loaded *contiguously from 1*.
+// Because frames download roughly in order, this "safe ceiling" lets the scrub play
+// smoothly up to what's ready and never jump ahead into an un-downloaded gap.
 function usePreloadedFrames(dir: "desktop" | "mobile", total: number) {
-  const loadedRef = useRef<boolean[]>(new Array(total + 1).fill(false));
-  const [ready, setReady] = useState(false);
+  const [maxContiguous, setMaxContiguous] = useState(0);
   useEffect(() => {
-    loadedRef.current = new Array(total + 1).fill(false);
-    setReady(false);
-    let done = 0;
+    setMaxContiguous(0);
+    const loaded = new Array(total + 1).fill(false);
+    let ceiling = 0;
+    const bump = () => {
+      while (loaded[ceiling + 1]) ceiling++;
+      setMaxContiguous(ceiling);
+    };
     const imgs: HTMLImageElement[] = [];
     for (let i = 1; i <= total; i++) {
       const img = new Image();
       img.onload = () => {
-        loadedRef.current[i] = true;
-        done++;
-        // Enable smooth scrub once the opening stretch is buffered.
-        if (done >= Math.min(total, 24) && !ready) setReady(true);
+        loaded[i] = true;
+        bump();
       };
       img.src = frameSrc(dir, i);
       imgs.push(img);
     }
     return () => imgs.forEach((im) => (im.onload = null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dir, total]);
-  return { loadedRef, ready };
+  return { maxContiguous, fullyLoaded: maxContiguous >= total };
 }
 
 function useFrameScrub(trackRef: React.RefObject<HTMLDivElement | null>, totalFrames: number) {
@@ -74,23 +76,18 @@ function useFrameScrub(trackRef: React.RefObject<HTMLDivElement | null>, totalFr
   return { frame, progress };
 }
 
-// Given the target frame, return the nearest frame at or below it that is actually
-// decoded — so the <img> never points at an un-downloaded frame (no blank flash / stutter).
-function nearestLoaded(target: number, loaded: boolean[]) {
-  for (let i = target; i >= 1; i--) if (loaded[i]) return i;
-  for (let i = target + 1; i < loaded.length; i++) if (loaded[i]) return i;
-  return 1;
-}
-
 export default function ParallaxHero() {
   const trackRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const dir: "desktop" | "mobile" = isMobile ? "mobile" : "desktop";
   const { frame, progress } = useFrameScrub(trackRef, TOTAL_FRAMES);
-  const { loadedRef } = usePreloadedFrames(dir, TOTAL_FRAMES);
+  const { maxContiguous, fullyLoaded } = usePreloadedFrames(dir, TOTAL_FRAMES);
 
-  // Only ever display a frame that has finished decoding.
-  const shownFrame = nearestLoaded(frame, loadedRef.current);
+  // Cap the shown frame at the highest frame that (with all before it) has finished
+  // downloading. Frames arrive in order, so this plays smoothly up to what's ready and
+  // never jumps ahead into an un-downloaded gap — no stutter, ever, even on first load.
+  const ceiling = Math.max(1, maxContiguous);
+  const shownFrame = Math.min(frame, ceiling);
   const desktopFrame = shownFrame;
   const mobileFrame = shownFrame;
 
@@ -170,10 +167,18 @@ export default function ParallaxHero() {
           </div>
         </div>
 
-        {progress < 0.96 && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-cream/70 text-xs tracking-[0.3em] uppercase animate-bounce z-20">
-            Scroll ↓
+        {/* Subtle buffering hint until the whole sequence is cached, then the scroll cue. */}
+        {!fullyLoaded ? (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-cream/60 text-xs tracking-[0.25em] uppercase z-20">
+            <span className="w-2 h-2 rounded-full bg-caramel animate-pulse" />
+            Loading
           </div>
+        ) : (
+          progress < 0.96 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-cream/70 text-xs tracking-[0.3em] uppercase animate-bounce z-20">
+              Scroll ↓
+            </div>
+          )
         )}
       </div>
     </div>
