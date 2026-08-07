@@ -3,7 +3,7 @@ import { whatsappLink } from "../lib/utils";
 
 const PHONE = "919876543210";
 
-const TOTAL_FRAMES = 192;
+const TOTAL_FRAMES = 96;
 const frameSrc = (dir: "desktop" | "mobile", n: number) =>
   `/frames/${dir}/frame-${String(n).padStart(3, "0")}.jpg`;
 
